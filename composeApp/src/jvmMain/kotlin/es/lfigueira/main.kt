@@ -8,6 +8,6 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         title = "Monitor_procesos_sencillo",
     ) {
-        App()
+
     }
 }
