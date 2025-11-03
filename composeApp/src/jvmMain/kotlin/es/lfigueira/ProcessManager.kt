@@ -64,4 +64,19 @@ class ProcessManager {
         }
         return processList
     }
+
+    fun killProcess(pid: String): Boolean {
+        return try {
+            val command = when (detectOS()) {
+                OperatingSystem.WINDOWS -> listOf("taskkill", "/PID", pid, "/F")
+                OperatingSystem.LINUX, OperatingSystem.MAC -> listOf("kill", "-9", pid)
+                else -> return false
+            }
+            ProcessBuilder(command).start().waitFor()
+            true
+        } catch (e: Exception) {
+            print("Error al matar un proceso: ${e.message}")
+            false
+        }
+    }
 }

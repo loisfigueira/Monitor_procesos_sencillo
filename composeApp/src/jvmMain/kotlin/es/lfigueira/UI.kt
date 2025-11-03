@@ -18,11 +18,15 @@ fun UI() {
     var filterName by remember { mutableStateOf("") }
     var filterUser by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     fun refreshProcesses() {
         coroutineScope.launch {
+            isLoading = true
             val result = withContext(Dispatchers.IO) { processManager.listProcesses() }
             processes = result
+            isLoading = false
         }
     }
 
@@ -57,20 +61,37 @@ fun UI() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(filteredProcesses) { process ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(process.pid, modifier = Modifier.weight(1f))
-                        Text(process.name, modifier = Modifier.weight(2f))
-                        Text(process.user, modifier = Modifier.weight(2f))
-                        Text("%.1f%%".format(process.cpu), modifier = Modifier.weight(1f))
-                        Text("%.1f MB".format(process.memory), modifier = Modifier.weight(1f))
+            if (isLoading) {
+                Text(text = "Actualizando...")
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(filteredProcesses) { process ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(process.pid, modifier = Modifier.weight(1f))
+                            Text(process.name, modifier = Modifier.weight(2f))
+                            Text(process.user, modifier = Modifier.weight(2f))
+                            Text("%.1f%%".format(process.cpu), modifier = Modifier.weight(1f))
+                            Text("%.1f MB".format(process.memory), modifier = Modifier.weight(1f))
+
+                            Button(onClick = {
+                                val success = processManager.killProcess(process.pid)
+                                refreshProcesses()
+                                if (!success) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Error al finalizar proceso ${process.name}")
+                                    }
+                                }
+                            }) {
+                                Text("Finalizar")
+                            }
+                        }
                     }
                 }
             }
         }
+        SnackbarHost(hostState = snackbarHostState)
     }
 }
