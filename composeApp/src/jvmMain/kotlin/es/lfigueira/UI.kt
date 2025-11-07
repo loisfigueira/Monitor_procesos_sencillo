@@ -10,6 +10,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun UI() {
@@ -38,6 +40,14 @@ fun UI() {
                 it.user.contains(filterUser, ignoreCase = true)
     }
 
+    val totalCpu = processes.filter { it.name.lowercase() != "idle" }.sumOf { it.cpu }
+    val totalMemory = processes.sumOf { it.memory }
+
+    val osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean() as com.sun.management.OperatingSystemMXBean
+    val totalRamBytes = osBean.totalPhysicalMemorySize
+    val totalRamMB = totalRamBytes / (1024.0 * 1024.0)
+    val usedMemoryPercent = (totalMemory / totalRamMB) * 100
+
     MaterialTheme {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
 
@@ -60,6 +70,23 @@ fun UI() {
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Resumen del sistema", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("CPU total: %.2f %%".format(totalCpu))
+                    Text("Memoria total usada: %.2f %% de %.0f MB".format(usedMemoryPercent, totalRamMB))
+                }
+            }
 
             if (isLoading) {
                 Text(text = "Actualizando...")
