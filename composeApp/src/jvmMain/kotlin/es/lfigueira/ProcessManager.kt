@@ -4,7 +4,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 import oshi.SystemInfo
-import kotlin.math.max
 import oshi.software.os.OSProcess
 
 class ProcessManager {
@@ -27,7 +26,6 @@ class ProcessManager {
 
     private fun listWindowsProcesses(): List<ProcessInfo> {
         val processList = mutableListOf<ProcessInfo>()
-
         val oshiOs: oshi.software.os.OperatingSystem = systemInfo.operatingSystem
 
         // Obtener todos los procesos ordenados por PID
@@ -56,10 +54,13 @@ class ProcessManager {
 
         // Calculamos CPU %
         val cpuUsageList = processes.map { process ->
-            val prevTime = previousCpuTimes[process.processID] ?: 0L
-            val currTime = process.userTime + process.kernelTime
-            val delta = max(0L, currTime - prevTime)
-            val cpuPercent = delta.toDouble() / 1000.0 / Runtime.getRuntime().availableProcessors() * 100.0
+            val prevTicks = previousCpuTimes[process.processID] ?: 0L
+            val currTicks = process.userTime + process.kernelTime
+            val deltaTicks = currTicks - prevTicks
+
+            val elapsedTimeMillis = 1000.0 // por ejemplo 1 segundo entre actualizaciones
+            val cpuPercent = deltaTicks.toDouble() / (elapsedTimeMillis * Runtime.getRuntime().availableProcessors()) * 100.0
+
 
             ProcessInfo(
                 pid = process.processID.toString(),
