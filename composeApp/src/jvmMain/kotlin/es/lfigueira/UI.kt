@@ -14,6 +14,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -83,31 +84,46 @@ fun UI() {
                     value = filterName,
                     onValueChange = { filterName = it },
                     label = { Text("Filtrar por nombre") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = accentColor.copy(alpha = 0.05f),
                         unfocusedContainerColor = accentColor.copy(alpha = 0.02f),
                         focusedIndicatorColor = accentColor,
                         unfocusedIndicatorColor = accentColor.copy(alpha = 0.6f),
-                        cursorColor = accentColor
-                    )
+                        cursorColor = accentColor,
+                        focusedLabelColor = accentColor,      // mantiene el color cuando está flotando
+                        unfocusedLabelColor = accentColor,    // mantiene el color cuando no está enfocado
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 )
                 OutlinedTextField(
                     value = filterUser,
                     onValueChange = { filterUser = it },
                     label = { Text("Filtrar por usuario") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = accentColor.copy(alpha = 0.05f),
                         unfocusedContainerColor = accentColor.copy(alpha = 0.02f),
                         focusedIndicatorColor = accentColor,
                         unfocusedIndicatorColor = accentColor.copy(alpha = 0.6f),
-                        cursorColor = accentColor
-                    )
+                        cursorColor = accentColor,
+                        focusedLabelColor = accentColor,      // mantiene el color cuando está flotando
+                        unfocusedLabelColor = accentColor,    // mantiene el color cuando no está enfocado
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 )
                 Button(
                     onClick = { refreshProcesses() },
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White),
+                    modifier = Modifier.align(CenterVertically)
                 ) { Text("Actualizar") }
             }
 
@@ -129,14 +145,14 @@ fun UI() {
                                 progress = { animatedCpu },
                                 strokeWidth = 16.dp,
                                 modifier = Modifier.size(300.dp),
-                                trackColor = Color.Gray.copy(alpha = 0.3f),
+                                trackColor = accentColor.copy(alpha = 0.05f),
                                 color = Color(0xFFD94A2A) // Color sólido, no gradiente
                             )
                             Text("%.1f %%".format(totalCpu), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
 
-                    HorizontalDivider(color = Color.Gray, thickness = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp))
+                    HorizontalDivider(color = stopColor, thickness = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp))
 
                     // RAM
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -146,7 +162,7 @@ fun UI() {
                                 progress = { animatedRam },
                                 strokeWidth = 16.dp,
                                 modifier = Modifier.size(300.dp),
-                                trackColor = Color.Gray.copy(alpha = 0.3f),
+                                trackColor = accentColor.copy(alpha = 0.05f),
                                 color = Color(0xFFA12B5E) // Color sólido
                             )
                             Text("%.1f %%".format(usedMemoryPercent), style = MaterialTheme.typography.bodyMedium)
@@ -154,7 +170,7 @@ fun UI() {
                     }
                 }
 
-                VerticalDivider(color = Color.Gray, modifier = Modifier.fillMaxHeight().width(2.dp))
+                VerticalDivider(color = stopColor, thickness = 2.dp, modifier = Modifier.fillMaxHeight().width(2.dp))
 
                 // Zona derecha: lista de procesos
                 Column(modifier = Modifier.fillMaxHeight().weight(0.55f).padding(start = 16.dp)) {
@@ -175,11 +191,15 @@ fun UI() {
                                 Text("%.1f MB".format(process.memory), modifier = Modifier.weight(1f))
                                 Button(
                                     onClick = {
-                                        val success = processManager.killProcess(process.pid)
-                                        refreshProcesses()
-                                        if (!success) {
-                                            coroutineScope.launch {
-                                                snackbarHostState.showSnackbar("Error al finalizar proceso ${process.name}")
+                                        coroutineScope.launch {
+                                            val result = processManager.killProcess(process.pid)
+                                            if (result.isSuccess) {
+                                                refreshProcesses()
+                                            } else {
+                                                val errorMessage = result.exceptionOrNull()?.message ?: "Error desconocido"
+                                                snackbarHostState.showSnackbar(
+                                                    "No se pudo finalizar '${process.name}': $errorMessage"
+                                                )
                                             }
                                         }
                                     },
@@ -189,7 +209,9 @@ fun UI() {
                                     ),
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.height(36.dp).hoverable(MutableInteractionSource())
-                                ) { Text("Finalizar", style = MaterialTheme.typography.labelMedium) }
+                                ) {
+                                    Text("Finalizar", style = MaterialTheme.typography.labelMedium)
+                                }
                             }
                         }
                     }

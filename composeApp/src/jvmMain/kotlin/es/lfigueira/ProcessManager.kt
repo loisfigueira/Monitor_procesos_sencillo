@@ -101,18 +101,25 @@ class ProcessManager {
         return processList
     }
 
-    fun killProcess(pid: String): Boolean {
+    fun killProcess(pid: String): Result<Unit> {
         return try {
             val command = when (detectOS()) {
                 OperatingSystem.WINDOWS -> listOf("taskkill", "/PID", pid, "/F")
                 OperatingSystem.LINUX, OperatingSystem.MAC -> listOf("kill", "-9", pid)
-                else -> return false
+                else -> return Result.failure(Exception("Sistema operativo no soportado"))
             }
-            ProcessBuilder(command).start().waitFor()
-            true
+            val process = ProcessBuilder(command).start()
+            val exitCode = process.waitFor()
+
+            if (exitCode == 0) {
+                Result.success(Unit)
+            } else {
+                // Capturamos el error del comando
+                val errorMsg = process.errorStream.bufferedReader().readText()
+                Result.failure(Exception("No se pudo finalizar el proceso: $errorMsg"))
+            }
         } catch (e: Exception) {
-            print("Error al matar un proceso: ${e.message}")
-            false
+            Result.failure(e)
         }
     }
 }
