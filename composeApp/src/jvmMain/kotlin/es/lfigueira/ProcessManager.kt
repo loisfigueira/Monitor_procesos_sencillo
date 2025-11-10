@@ -9,7 +9,6 @@ import oshi.software.os.OSProcess
 class ProcessManager {
 
     private val systemInfo = SystemInfo()
-    private val os = systemInfo.operatingSystem
 
     // Para guardar ticks de CPU de la última medición
     private var previousCpuTimes: Map<Int, Long> = emptyMap()
@@ -25,7 +24,6 @@ class ProcessManager {
 
 
     private fun listWindowsProcesses(): List<ProcessInfo> {
-        val processList = mutableListOf<ProcessInfo>()
         val oshiOs: oshi.software.os.OperatingSystem = systemInfo.operatingSystem
 
         // Obtener todos los procesos ordenados por PID
