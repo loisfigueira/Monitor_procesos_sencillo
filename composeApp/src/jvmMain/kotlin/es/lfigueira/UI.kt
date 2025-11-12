@@ -2,6 +2,7 @@ package es.lfigueira
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -17,11 +18,15 @@ import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.Toolkit
 
 @Composable
 fun UI() {
@@ -48,7 +53,7 @@ fun UI() {
     LaunchedEffect(Unit) {
         var prevTicks = cpu.systemCpuLoadTicks
         while (true) {
-            kotlinx.coroutines.delay(1000L)
+            delay(1000L)
             val newTicks = cpu.systemCpuLoadTicks
             val load = cpu.getSystemCpuLoadBetweenTicks(prevTicks)
             prevTicks = newTicks
@@ -58,6 +63,8 @@ fun UI() {
             val totalMemory = memory.total.toFloat()
             val usedMemory = totalMemory - memory.available.toFloat()
             ramUsage = (usedMemory / totalMemory * 100)
+
+            delay(3000L)
         }
     }
 
@@ -91,7 +98,7 @@ fun UI() {
                 verticalAlignment = CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                // Título con icono
+                // Título
                 Row(verticalAlignment = CenterVertically) {
                     Text(
                         text = "Monitor de procesos",
@@ -163,37 +170,54 @@ fun UI() {
             Row(modifier = Modifier.fillMaxSize()) {
                 // Zona izquierda: CPU y RAM
                 Column(
-                    modifier = Modifier.fillMaxHeight().weight(0.45f),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(0.30f)
+                        .padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceEvenly
+                    verticalArrangement = Arrangement.SpaceAround
                 ) {
-                    // CPU
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Tamaño adaptativo
+                    val screenSize = Toolkit.getDefaultToolkit().screenSize
+                    val circleSize: Dp = when {
+                        screenSize.height > 1440 -> 320.dp
+                        screenSize.height > 1080 -> 280.dp
+                        else -> 220.dp
+                    }
+
+                    // --- CPU ---
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Text("CPU", style = MaterialTheme.typography.titleLarge)
                         Box(contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
                                 progress = { animatedCpu },
                                 strokeWidth = 16.dp,
-                                modifier = Modifier.size(300.dp),
+                                modifier = Modifier.size(circleSize),
                                 trackColor = accentColor.copy(alpha = 0.05f),
-                                color = Color(0xFFD94A2A) // Color sólido, no gradiente
+                                color = Color(0xFFD94A2A)
                             )
                             Text("%.1f %%".format(cpuUsage), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
 
-                    HorizontalDivider(color = stopColor, thickness = 2.dp, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp))
+                    HorizontalDivider(
+                        color = stopColor,
+                        thickness = 2.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
 
-                    // RAM
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // --- RAM ---
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         Text("RAM", style = MaterialTheme.typography.titleLarge)
                         Box(contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
                                 progress = { animatedRam },
                                 strokeWidth = 16.dp,
-                                modifier = Modifier.size(300.dp),
+                                modifier = Modifier.size(circleSize),
                                 trackColor = accentColor.copy(alpha = 0.05f),
-                                color = Color(0xFFA12B5E) // Color sólido
+                                color = Color(0xFFA12B5E)
                             )
                             Text("%.1f %%".format(ramUsage), style = MaterialTheme.typography.bodyMedium)
                         }
@@ -206,7 +230,7 @@ fun UI() {
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .weight(0.55f)
+                        .weight(0.70f)
                         .padding(start = 16.dp)
                 ) {
                     // --- Cabecera de la lista ---
@@ -282,14 +306,27 @@ fun FinalizarButton(
 
     Button(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = bgColor, contentColor = Color.White),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = bgColor,
+            contentColor = Color.White
+        ),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .height(36.dp)
             .width(100.dp)
             .scale(scale)
-            .hoverable(MutableInteractionSource())
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        tryAwaitRelease()
+                    }
+                )
+            }
+            .hoverable(
+                interactionSource = remember { MutableInteractionSource() },
+                enabled = true
+            )
     ) {
-        Text("Finalizar", style = MaterialTheme.typography.labelMedium)
+        Text("Finalizar", fontWeight = FontWeight.Bold)
     }
 }
