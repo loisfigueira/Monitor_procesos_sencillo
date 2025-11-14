@@ -49,7 +49,7 @@ fun UI() {
     var cpuUsage by remember { mutableStateOf(0f) }
     var ramUsage by remember { mutableStateOf(0f) }
 
-    // 🔁 Actualización en tiempo real
+    // Actualización en tiempo real
     LaunchedEffect(Unit) {
         var prevTicks = cpu.systemCpuLoadTicks
         while (true) {
