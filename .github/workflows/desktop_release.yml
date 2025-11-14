@@ -1,36 +1,32 @@
 name: Compilar y Lanzar App Multiplataforma
 
-
 on:
   push:
     tags:
       - 'v*'
-
 
 jobs:
   build_windows_msi:
     name: Compilación - Windows MSI
     runs-on: windows-latest
 
-
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
 
-
       - name: Ejecutar Build para MSI
         run: .\gradlew.bat clean :composeApp:packageMsi
         shell: pwsh
 
-
       - name: Preparar y Guardar Artefacto
         run: |
-          mkdir -p deployment-files
-          move composeApp/build/compose/binaries/main/msi/*.msi deployment-files/ProcessMonitor_Installer_Windows.msi
+          New-Item -ItemType Directory -Force -Path deployment-files
+          Move-Item -Path composeApp/build/compose/binaries/main/msi/*.msi -Destination deployment-files/ProcessMonitor_Installer_Windows.msi
         shell: pwsh
 
       - name: Subir Artefacto MSI
@@ -39,15 +35,14 @@ jobs:
           name: deployment-windows-msi
           path: deployment-files/ProcessMonitor_Installer_Windows.msi
 
-
   build_linux_deb:
     name: Compilación - Linux DEB
     needs: build_windows_msi
     runs-on: ubuntu-latest
 
-
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -57,10 +52,8 @@ jobs:
       - name: Instalar dependencias de Linux
         run: sudo apt-get update && sudo apt-get install -y fakeroot dpkg
 
-
       - name: Dar permisos de ejecución a gradlew
         run: chmod +x gradlew
-
 
       - name: Ejecutar Build para DEB
         run: ./gradlew clean :composeApp:packageDeb
@@ -85,13 +78,24 @@ jobs:
     permissions:
       contents: write
 
-
     steps:
-      - name: Descargar Artefactos
+      - name: Crear directorio para artefactos
+        run: mkdir -p release-assets
+
+      - name: Descargar Artefacto Windows MSI
         uses: actions/download-artifact@v4
         with:
-          name: installers-bundle
+          name: deployment-windows-msi
           path: release-assets
+
+      - name: Descargar Artefacto Linux DEB
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-linux-deb
+          path: release-assets
+
+      - name: Listar archivos descargados (debug)
+        run: ls -R release-assets
 
       - name: Publicar en GitHub Releases
         uses: softprops/action-gh-release@v1
@@ -99,8 +103,24 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release Oficial ${{ github.ref_name }}
           body: |
-            Lanzamiento de la versión ${{ github.ref_name }}!
-
-
-            Se han incluido instaladores nativos para Windows (.msi) y Linux (.deb).
-          files: release-assets/**/*
+            🚀 Lanzamiento de la versión ${{ github.ref_name }}
+            
+            ## Instaladores disponibles:
+            
+            - **Windows**: `ProcessMonitor_Installer_Windows.msi`
+            - **Linux**: `ProcessMonitor_Package_Linux.deb`
+            
+            ### Instalación:
+            
+            **Windows:**
+            ```
+            Doble clic en el archivo .msi
+            ```
+            
+            **Linux (Debian/Ubuntu):**
+            ```bash
+            sudo dpkg -i ProcessMonitor_Package_Linux.deb
+            ```
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
