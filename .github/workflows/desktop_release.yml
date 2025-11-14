@@ -1,97 +1,106 @@
-name: Desktop Release (MSI, DEB)
+name: Compilar y Lanzar App Multiplataforma
+
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version de la Release (e.g., v1.0.0)'
-        required: true
-        default: 'v1.0.0'
-      # El Gradle de su proyecto utiliza la version "1.0.0" para el paquete.
-      # Si la cambia en build.gradle.kts, debe ajustar este default.
+  push:
+    tags:
+      - 'v*'
+
 
 jobs:
-  # Job 1: Compilar el instalador de Windows (MSI)
-  build_windows:
+  build_windows_msi:
+    name: Compilación - Windows MSI
     runs-on: windows-latest
+
+
     steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
-
-      - name: Configurar JDK (usando Java 17, basado en gradle.properties)
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Permisos para gradlew
-        run: chmod +x ./gradlew
 
-      - name: Compilar MSI (Windows)
-        run: ./gradlew :composeApp:packageMsi
+      - name: Ejecutar Build para MSI
+        run: .\gradlew.bat clean :composeApp:packageMsi
+        shell: pwsh
 
-      - name: Subir Artifacto (MSI)
+
+      - name: Preparar y Guardar Artefacto
+        run: |
+          mkdir -p deployment-files
+          move composeApp/build/compose/binaries/main/msi/*.msi deployment-files/ProcessMonitor_Installer_Windows.msi
+        shell: pwsh
+
+      - name: Subir Artefacto MSI
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
-          path: composeApp/build/compose/binaries/main/msi/*.msi
+          name: deployment-windows-msi
+          path: deployment-files/ProcessMonitor_Installer_Windows.msi
 
-  # Job 2: Compilar el instalador de Linux (DEB)
-  build_linux:
+
+  build_linux_deb:
+    name: Compilación - Linux DEB
+    needs: build_windows_msi
     runs-on: ubuntu-latest
+
+
     steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
-
-      - name: Configurar JDK (usando Java 17, basado en gradle.properties)
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Permisos para gradlew
-        run: chmod +x ./gradlew
+      - name: Instalar dependencias de Linux
+        run: sudo apt-get update && sudo apt-get install -y fakeroot dpkg
 
-      - name: Compilar DEB (Linux)
-        run: ./gradlew :composeApp:packageDeb
 
-      - name: Subir Artifacto (DEB)
+      - name: Dar permisos de ejecución a gradlew
+        run: chmod +x gradlew
+
+
+      - name: Ejecutar Build para DEB
+        run: ./gradlew clean :composeApp:packageDeb
+        shell: bash
+
+      - name: Preparar y Guardar Artefacto
+        run: |
+          mkdir -p deployment-files
+          mv composeApp/build/compose/binaries/main/deb/*.deb deployment-files/ProcessMonitor_Package_Linux.deb
+
+      - name: Subir Artefacto DEB
         uses: actions/upload-artifact@v4
         with:
-          name: linux-installer
-          path: composeApp/build/compose/binaries/main/deb/*.deb
+          name: deployment-linux-deb
+          path: deployment-files/ProcessMonitor_Package_Linux.deb
 
-  # Job 3: Crear la Release y adjuntar los instaladores
-  create_release:
-    needs: [build_windows, build_linux]
+  create_github_release:
+    name: Publicar Release
+    needs: [build_windows_msi, build_linux_deb]
     runs-on: ubuntu-latest
-    # Permisos necesarios para crear la release y subir archivos
+
     permissions:
       contents: write
+
+
     steps:
-      - name: Descargar MSI (Windows)
+      - name: Descargar Artefactos
         uses: actions/download-artifact@v4
         with:
-          name: windows-installer
-          path: release/
+          name: installers-bundle
+          path: release-assets
 
-      - name: Descargar DEB (Linux)
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-installer
-          path: release/
-
-      - name: Crear GitHub Release y subir instaladores
+      - name: Publicar en GitHub Releases
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.inputs.version }}
-          name: Release ${{ github.event.inputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: Release Oficial ${{ github.ref_name }}
           body: |
-            ## Monitor de Procesos
+            Lanzamiento de la versión ${{ github.ref_name }}!
 
-            Instaladores para Windows y Linux.
 
-            PID: ${{ github.sha }}
-          draft: false
-          prerelease: false
-          files: release/*
+            Se han incluido instaladores nativos para Windows (.msi) y Linux (.deb).
+          files: release-assets/**/*
