@@ -16,19 +16,23 @@ fun main() = application {
         state = WindowState(width = 1200.dp, height = 800.dp),
         resizable = true
     ) {
-        val density = LocalDensity.current
-        val scaleFactor = remember {
-            val scale = java.awt.Toolkit.getDefaultToolkit().screenResolution / 96.0f
-            scale.coerceIn(1f, 2f)
-        }
+        if(detectOS() == OperatingSystem.LINUX ) {
+            val density = LocalDensity.current
+            val scaleFactor = remember {
+                val scale = java.awt.Toolkit.getDefaultToolkit().screenResolution / 96.0f
+                scale.coerceIn(1f, 2f)
+            }
 
-        CompositionLocalProvider(
-            LocalDensity provides Density(
-                density.density * scaleFactor,
-                density.fontScale * scaleFactor
-            )
-        ) {
-            window.minimumSize = java.awt.Dimension(900, 750)
+            CompositionLocalProvider(
+                LocalDensity provides Density(
+                    density.density * scaleFactor,
+                    density.fontScale * scaleFactor
+                )
+            ) {
+                window.minimumSize = java.awt.Dimension(900, 750)
+                UI()
+            }
+        } else {
             UI()
         }
     }
